@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Silverpoint Team Check-In | Momentum Board</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Newsreader:ital,opsz,wght@0,6..72,300;0,6..72,400;0,6..72,500;1,6..72,400&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#1B2A24">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="icon" href="icon-192.png">
+<style>
+:root{
+  --ink:#1B2A24; --ink-2:#3E4F47; --ink-3:#6E7A6B;
+  --paper:#E7EAE4; --surface:#FAFAF8; --surface-2:#F1F3EE;
+  --line:#C6CCC2; --line-soft:#DCE0D8;
+  --pos:#2F6B5A; --pos-bg:rgba(47,107,90,.09);
+  --amber:#8A5A1F; --amber-bg:rgba(184,138,60,.13);
+  --gold:#B8860E; --gold-bg:rgba(184,134,14,.09);
+  --display:'Cormorant Garamond',Georgia,serif;
+  --body:'Newsreader',Georgia,serif;
+  --mono:'IBM Plex Mono',ui-monospace,monospace;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--body);font-size:15.5px;line-height:1.55;-webkit-font-smoothing:antialiased}
+h1,h2,h3,h4{font-family:var(--display);font-weight:600;letter-spacing:-.006em;margin:0;color:var(--ink)}
+.mono{font-family:var(--mono)}
+button{font-family:inherit;cursor:pointer}
+select,input,textarea{font-family:var(--body);font-size:15px}
+
+.shell{max-width:1080px;margin:0 auto;padding:26px 22px 70px}
+.masthead{display:flex;align-items:flex-end;justify-content:space-between;flex-wrap:wrap;gap:14px;padding-bottom:18px;border-bottom:2px solid var(--ink);margin-bottom:18px}
+.masthead .eyebrow{font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3)}
+.masthead h1{font-size:clamp(24px,3.4vw,32px);margin-top:6px}
+.masthead .cnt{font-family:var(--mono);font-size:11px;color:var(--ink-3);letter-spacing:.03em;text-align:right;line-height:1.7}
+.masthead .cnt b{color:var(--ink);font-weight:600}
+
+.intro{font-family:var(--display);font-size:19px;font-weight:500;color:var(--ink-2);max-width:66ch;margin-bottom:6px;line-height:1.4}
+.subintro{font-size:14px;color:var(--ink-3);max-width:70ch;margin-bottom:20px;line-height:1.55}
+
+.banner{background:var(--surface-2);border:1px solid var(--line);border-radius:3px;padding:12px 16px;font-size:13px;color:var(--ink-2);margin-bottom:16px}
+.banner b{color:var(--ink)}
+.banner.warn{background:var(--amber-bg);border-color:var(--amber);color:var(--amber)}
+.banner.warn b{color:var(--amber)}
+
+.tabs{display:flex;gap:2px;margin-bottom:24px;border:1px solid var(--line);border-radius:3px;overflow:hidden;background:var(--surface);width:fit-content;flex-wrap:wrap}
+.tabs button{background:transparent;border:0;padding:11px 18px;font-family:var(--mono);font-size:11.5px;letter-spacing:.05em;color:var(--ink-2);border-right:1px solid var(--line)}
+.tabs button:last-child{border-right:none}
+.tabs button.on{background:var(--ink);color:var(--paper)}
+.tabs button:hover:not(.on){background:var(--surface-2)}
+
+.view{display:none}
+.view.on{display:block}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:3px}
+.pad{padding:22px}
+
+/* ---- check-in form ---- */
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.field{display:flex;flex-direction:column;gap:6px}
+.field.full{grid-column:1/-1}
+.field label{font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3)}
+.field .help{font-size:12px;color:var(--ink-3);font-style:italic;margin-top:-2px}
+.field select,.field input,.field textarea{border:1px solid var(--line);border-radius:2px;padding:10px 11px;background:var(--surface);color:var(--ink)}
+.field select:focus,.field input:focus,.field textarea:focus{outline:2px solid var(--pos);outline-offset:-1px}
+.field textarea{resize:vertical;min-height:60px;font-size:14.5px}
+
+.mood-row{display:flex;gap:8px;flex-wrap:wrap}
+.mood-opt{flex:1;min-width:140px;border:1px solid var(--line);border-radius:2px;padding:10px 12px;text-align:center;background:var(--surface);font-size:13.5px;color:var(--ink-2)}
+.mood-opt input{display:none}
+.mood-opt.picked{border-color:var(--ink);background:var(--surface-2);color:var(--ink);font-weight:500}
+.mood-opt .emoji{display:block;font-size:17px;margin-bottom:3px}
+
+.submit-row{display:flex;justify-content:space-between;align-items:center;margin-top:18px;gap:14px}
+.submit-row button{background:var(--ink);color:var(--paper);border:0;padding:12px 22px;border-radius:2px;font-family:var(--mono);font-size:12px;letter-spacing:.06em}
+.submit-row button:hover{background:var(--ink-2)}
+.submit-row button:disabled{opacity:.5;cursor:default}
+.status-msg{font-family:var(--mono);font-size:11.5px;color:var(--ink-3)}
+.status-msg.ok{color:var(--pos)}
+.status-msg.err{color:var(--amber)}
+
+/* ---- wins wall ---- */
+.wall{display:grid;gap:12px;grid-template-columns:repeat(auto-fill,minmax(260px,1fr))}
+.win-card{background:var(--surface);border:1px solid var(--line);border-radius:3px;padding:16px 18px;position:relative}
+.win-card::before{content:"";position:absolute;left:0;top:14px;bottom:14px;width:3px;background:var(--pos);border-radius:2px}
+.win-card{padding-left:22px}
+.win-card .wtext{font-size:14.5px;color:var(--ink);line-height:1.5}
+.win-card .wmeta{font-family:var(--mono);font-size:10px;color:var(--ink-3);margin-top:10px;letter-spacing:.03em}
+.filter-row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px}
+.filter-row select{border:1px solid var(--line);border-radius:2px;padding:8px 10px;background:var(--surface);font-size:13px}
+.empty-note{font-size:13.5px;color:var(--ink-3);font-style:italic;padding:20px 0}
+
+/* ---- ask list ---- */
+.ask-row{display:flex;gap:14px;align-items:flex-start;padding:14px 18px;border-bottom:1px solid var(--line-soft)}
+.ask-row:last-child{border-bottom:none}
+.ask-row.resolved{opacity:.5}
+.ask-row .atext{flex:1;font-size:14.5px;color:var(--ink)}
+.ask-row .ameta{font-family:var(--mono);font-size:10.5px;color:var(--ink-3);margin-top:5px}
+.ask-toggle{border:1px solid var(--line);background:var(--surface);border-radius:2px;padding:6px 11px;font-family:var(--mono);font-size:10.5px;color:var(--ink-2);white-space:nowrap}
+.ask-toggle.done{border-color:var(--pos);color:var(--pos);background:var(--pos-bg)}
+.ask-tag{font-family:var(--mono);font-size:9px;letter-spacing:.07em;text-transform:uppercase;padding:3px 7px;border:1px solid var(--line);border-radius:2px;color:var(--ink-3);white-space:nowrap}
+
+/* ---- momentum overview ---- */
+.mom-grid{display:grid;gap:12px}
+.mom-card{background:var(--surface);border:1px solid var(--line);border-radius:3px;padding:16px 18px}
+.mom-top{display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:8px}
+.mom-top h4{font-size:16.5px;letter-spacing:-.004em}
+.mom-top .idb{font-family:var(--mono);font-size:10px;color:var(--ink-3);letter-spacing:.08em}
+.mom-stats{display:flex;gap:16px;margin-top:10px;flex-wrap:wrap}
+.mom-stats span{font-family:var(--mono);font-size:11.5px;color:var(--ink-2)}
+.mom-stats span b{color:var(--ink);font-weight:600}
+.streak-row{display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid var(--line-soft);font-size:13.5px}
+.streak-row:last-child{border-bottom:none}
+.streak-badge{font-family:var(--mono);font-size:11px;color:var(--gold);background:var(--gold-bg);padding:3px 9px;border-radius:2px;border:1px solid var(--gold)}
+.mood-pill{font-family:var(--mono);font-size:10px;letter-spacing:.05em;padding:3px 8px;border-radius:2px;border:1px solid var(--line);color:var(--ink-3)}
+
+@media (max-width:720px){
+  .form-grid{grid-template-columns:1fr}
+  .tabs{width:100%;overflow-x:auto}
+  .mood-row{flex-direction:column}
+}
+</style>
+</head>
+<body>
+<div class="shell">
+  <div class="masthead">
+    <div>
+      <div class="eyebrow">Silverpoint Senior Living &middot; Corrective Action Companion</div>
+      <h1>Team Check-In</h1>
+    </div>
+    <div class="cnt" id="hero-count">Loading&hellip;</div>
+  </div>
+
+  <p class="intro">The Metrics Log tracks the numbers. This tracks the people doing the work.</p>
+  <p class="subintro">Same 12 protocols, different question. Instead of asking whether a target was hit, this asks what moved forward, what got in the way, and what would help. Wins go on the wall for everyone to see. Asks go on a list corporate is expected to clear, not a complaint file.</p>
+
+  <div class="banner" id="storage-banner" style="display:none"></div>
+  <div class="banner">This board is <b>shared</b> across the portfolio. Everyone who has this link sees the same data. Check in weekly, by community. No entry is required to be about a protocol number. "Nothing to report" is a fine week.</div>
+
+  <div class="tabs" role="tablist">
+    <button data-view="checkin" class="on">Check In</button>
+    <button data-view="wins">Wins Wall</button>
+    <button data-view="asks">Ask List</button>
+    <button data-view="momentum">Momentum</button>
+  </div>
+
+  <!-- CHECK IN -->
+  <div class="view on" id="view-checkin">
+    <div class="card pad">
+      <div class="form-grid">
+        <div class="field">
+          <label>Community</label>
+          <select id="f-community"></select>
+        </div>
+        <div class="field">
+          <label>Week of</label>
+          <input type="week" id="f-week">
+        </div>
+
+        <div class="field full">
+          <label>How's the team's capacity this week?</label>
+          <div class="mood-row" id="f-mood"></div>
+        </div>
+
+        <div class="field full">
+          <label>What moved forward? <span style="text-transform:none;font-weight:normal">(optional, goes on the Wins Wall)</span></label>
+          <textarea id="f-win" placeholder="A fix that landed, a good conversation, a family that noticed. Small counts."></textarea>
+        </div>
+
+        <div class="field full">
+          <label>What got in the way? <span style="text-transform:none;font-weight:normal">(optional, just for context)</span></label>
+          <textarea id="f-blocker" placeholder="No judgment here. This is just so the pattern is visible to the people who can change it."></textarea>
+        </div>
+
+        <div class="field full">
+          <label>What would help? <span style="text-transform:none;font-weight:normal">(optional, goes on the Ask List for corporate to clear)</span></label>
+          <textarea id="f-ask" placeholder="A resource, a decision, a piece of information, a person to call. Asking is the system working."></textarea>
+        </div>
+
+        <div class="field">
+          <label>Related protocol <span style="text-transform:none;font-weight:normal">(optional)</span></label>
+          <select id="f-rec"></select>
+        </div>
+        <div class="field">
+          <label>Your name <span style="text-transform:none;font-weight:normal">(optional)</span></label>
+          <input type="text" id="f-loggedby" placeholder="Only if you want it on the record">
+        </div>
+      </div>
+      <div class="submit-row">
+        <span class="status-msg" id="f-status"></span>
+        <button id="f-submit">Check in</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- WINS WALL -->
+  <div class="view" id="view-wins">
+    <div class="filter-row">
+      <select id="w-community"></select>
+    </div>
+    <div class="wall" id="wins-host"></div>
+    <p class="empty-note" id="wins-empty" style="display:none">No wins logged yet. The first one posted here sets the tone for the rest.</p>
+  </div>
+
+  <!-- ASK LIST -->
+  <div class="view" id="view-asks">
+    <div class="filter-row">
+      <select id="a-community"></select>
+      <select id="a-status">
+        <option value="open">Open asks</option>
+        <option value="all">All asks</option>
+        <option value="resolved">Resolved</option>
+      </select>
+    </div>
+    <div class="card">
+      <div id="asks-host"></div>
+    </div>
+    <p class="empty-note" id="asks-empty" style="display:none">Nothing on the ask list right now.</p>
+  </div>
+
+  <!-- MOMENTUM -->
+  <div class="view" id="view-momentum">
+    <div class="card pad" style="margin-bottom:16px">
+      <h3 style="font-size:17px;margin-bottom:12px">Check-in streaks</h3>
+      <div id="streak-host"></div>
+    </div>
+    <h3 style="font-size:17px;margin-bottom:12px">By protocol</h3>
+    <div class="mom-grid" id="mom-host"></div>
+  </div>
+
+</div>
+
+<script>
+(function(){
+"use strict";
+
+/* =========================================================================
+   DATABASE CONFIG. Paste your own Supabase project values here.
+   Project Settings -> API in your Supabase dashboard.
+   The anon key is a PUBLIC key, safe to ship in client-side code: it only
+   works within the row-level-security rules you set on the table.
+   ========================================================================= */
+var SUPABASE_URL = "https://ulfmeoaejwlablncntxv.supabase.co/rest/v1/";
+var SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVsZm1lb2FlandsYWJsbmNudHh2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU5MzYwODgsImV4cCI6MjEwMTUxMjA4OH0.xczC-forZ0wpYv0AilU9wrsUqLK4UxLtLfnK6JbTBP0";
+
+var COMMUNITIES = ["WestMark Senior Living","Elan Corpus Christi","Edition Senior Living","The Eastman Senior Living","The Pearl Senior Living","Duncanville Senior Living","Portfolio-wide"];
+var SHORT = {"WestMark Senior Living":"WestMark","Elan Corpus Christi":"Elan Corpus Christi","Edition Senior Living":"Edition","The Eastman Senior Living":"The Eastman","The Pearl Senior Living":"The Pearl","Duncanville Senior Living":"Duncanville","Portfolio-wide":"Portfolio-wide"};
+
+var REC_TITLES = {
+ "R1":"Memory care staffing depth","R2":"Clinical follow-through","R3":"Meal temperature & trays",
+ "R4":"Business office stability (Pearl)","R5":"Elan site visit & capital","R6":"Five checkable promises",
+ "R7":"24-hour acknowledgment","R8":"Family ambassador program","R9":"Monthly family letter",
+ "R10":"Name & publish the teams","R11":"Move-in care-level packet","R12":"Rebuild the survey"
+};
+
+var MOODS = [
+ {v:"energized", label:"Energized", emoji:"\u2600\ufe0f"},
+ {v:"steady", label:"Steady", emoji:"\u26c5"},
+ {v:"stretched", label:"Stretched thin", emoji:"\u2601\ufe0f"}
+];
+
+var supabaseClient = (typeof window.supabase !== 'undefined' && SUPABASE_URL.indexOf('YOUR-PROJECT-REF')===-1)
+  ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+  : null;
+
+var entries = [];
+var storagePersistent = false;
+
+/* ---------------- storage (Supabase-backed, with a real connectivity check) ---------------- */
+async function checkStorage(){
+  if(!supabaseClient){ storagePersistent = false; return; }
+  try{
+    var res = await supabaseClient.from('checkins').select('id').limit(1);
+    storagePersistent = !res.error;
+  }catch(e){ storagePersistent = false; }
+}
+async function loadEntries(){
+  if(!storagePersistent){ return; }
+  try{
+    var res = await supabaseClient.from('checkins').select('*').order('entered_at', {ascending:false});
+    if(res.error) throw res.error;
+    entries = (res.data||[]).map(function(r){
+      return {
+        id:r.id, community:r.community, week:r.week, mood:r.mood||'',
+        win:r.win||'', blocker:r.blocker||'', ask:r.ask||'', resolved:!!r.resolved,
+        recId:r.rec_id||'', loggedBy:r.logged_by||'', enteredAt:r.entered_at
+      };
+    });
+  }catch(e){ /* keep whatever was already loaded */ }
+}
+async function insertEntry(entry){
+  if(!storagePersistent) return false;
+  try{
+    var res = await supabaseClient.from('checkins').insert([{
+      community:entry.community, week:entry.week, mood:entry.mood||null,
+      win:entry.win||null, blocker:entry.blocker||null, ask:entry.ask||null,
+      resolved:false, rec_id:entry.recId||null, logged_by:entry.loggedBy||null
+    }]).select();
+    if(res.error) throw res.error;
+    return res.data && res.data[0] ? res.data[0] : null;
+  }catch(e){ return false; }
+}
+async function updateResolved(id, resolved){
+  if(!storagePersistent) return false;
+  try{
+    var res = await supabaseClient.from('checkins').update({resolved:resolved}).eq('id', id);
+    return !res.error;
+  }catch(e){ return false; }
+}
+function renderStorageBanner(){
+  var el = document.getElementById('storage-banner');
+  if(storagePersistent){ el.style.display = 'none'; return; }
+  el.style.display = 'block';
+  el.className = 'banner warn';
+  if(!window.supabase){
+    el.innerHTML = '<b>Database script did not load.</b> Check your internet connection and reload. If this keeps happening, the Supabase script tag may be missing from index.html.';
+  } else if(SUPABASE_URL.indexOf('YOUR-PROJECT-REF')!==-1){
+    el.innerHTML = '<b>This copy is not connected to a database yet.</b> Open index.html and paste your Supabase project URL and anon key in near the top of the script. See the README for exact steps.';
+  } else {
+    el.innerHTML = '<b>Could not reach the database.</b> Double-check the Supabase URL and anon key in index.html, and confirm the "checkins" table and its policies exist.';
+  }
+}
+
+function uid(){ return 'c_'+Date.now().toString(36)+'_'+Math.random().toString(36).slice(2,8); }
+function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+function thisWeekStr(){
+  var d = new Date();
+  var jan1 = new Date(d.getFullYear(),0,1);
+  var days = Math.floor((d-jan1)/86400000);
+  var week = Math.ceil((days + jan1.getDay()+1)/7);
+  return d.getFullYear()+'-W'+String(week).padStart(2,'0');
+}
+function weekVal(w){ var m=/^(\d{4})-W(\d{2})$/.exec(w||''); return m ? parseInt(m[1],10)*53+parseInt(m[2],10) : null; }
+function fmtWeek(w){ return w ? 'Week of '+w.replace('-W',', wk ') : ''; }
+function fmtWhen(iso){ var d=new Date(iso); return d.toLocaleDateString(undefined,{month:'short',day:'numeric'}); }
+
+/* ---------------- tabs ---------------- */
+document.querySelectorAll('.tabs button').forEach(function(b){
+  b.addEventListener('click', async function(){
+    document.querySelectorAll('.tabs button').forEach(function(x){ x.classList.remove('on'); });
+    b.classList.add('on');
+    document.querySelectorAll('.view').forEach(function(v){ v.classList.remove('on'); });
+    document.getElementById('view-'+b.dataset.view).classList.add('on');
+    if(b.dataset.view!=='checkin'){
+      await loadEntries();
+      updateHeroCount();
+    }
+    if(b.dataset.view==='wins') renderWins();
+    if(b.dataset.view==='asks') renderAsks();
+    if(b.dataset.view==='momentum') renderMomentum();
+  });
+});
+
+/* ---------------- check-in form ---------------- */
+var fCommunity=document.getElementById('f-community'), fWeek=document.getElementById('f-week'),
+    fMood=document.getElementById('f-mood'), fWin=document.getElementById('f-win'),
+    fBlocker=document.getElementById('f-blocker'), fAsk=document.getElementById('f-ask'),
+    fRec=document.getElementById('f-rec'), fLoggedby=document.getElementById('f-loggedby'),
+    fSubmit=document.getElementById('f-submit'), fStatus=document.getElementById('f-status');
+
+COMMUNITIES.forEach(function(c){ var o=document.createElement('option'); o.value=c; o.textContent=SHORT[c]; fCommunity.appendChild(o); });
+fWeek.value = thisWeekStr();
+
+var noneOpt=document.createElement('option'); noneOpt.value=''; noneOpt.textContent='None / general';
+fRec.appendChild(noneOpt);
+Object.keys(REC_TITLES).forEach(function(id){ var o=document.createElement('option'); o.value=id; o.textContent=id+' \u00b7 '+REC_TITLES[id]; fRec.appendChild(o); });
+
+var pickedMood = '';
+MOODS.forEach(function(m){
+  var wrap = document.createElement('label'); wrap.className='mood-opt'; wrap.dataset.v=m.v;
+  wrap.innerHTML = '<input type="radio" name="mood" value="'+m.v+'"><span class="emoji">'+m.emoji+'</span>'+m.label;
+  wrap.addEventListener('click', function(){
+    pickedMood = m.v;
+    document.querySelectorAll('.mood-opt').forEach(function(x){ x.classList.remove('picked'); });
+    wrap.classList.add('picked');
+  });
+  fMood.appendChild(wrap);
+});
+
+fSubmit.addEventListener('click', async function(){
+  var win = fWin.value.trim(), blocker = fBlocker.value.trim(), ask = fAsk.value.trim();
+  if(!win && !blocker && !ask && !pickedMood){
+    fStatus.textContent = 'Add at least one thing, even just a mood.'; fStatus.className='status-msg err'; return;
+  }
+  fSubmit.disabled = true;
+  fStatus.textContent = 'Saving\u2026'; fStatus.className='status-msg';
+  var entry = {
+    community: fCommunity.value, week: fWeek.value || thisWeekStr(), mood: pickedMood,
+    win: win, blocker: blocker, ask: ask, recId: fRec.value || '',
+    loggedBy: fLoggedby.value.trim()
+  };
+  var saved = await insertEntry(entry);
+  fSubmit.disabled = false;
+  if(saved){
+    entries.unshift({
+      id:saved.id, community:entry.community, week:entry.week, mood:entry.mood,
+      win:entry.win, blocker:entry.blocker, ask:entry.ask, resolved:false,
+      recId:entry.recId, loggedBy:entry.loggedBy, enteredAt:saved.entered_at || new Date().toISOString()
+    });
+    fStatus.textContent = 'Checked in for ' + SHORT[entry.community] + '. Thank you.';
+    fStatus.className = 'status-msg ok';
+    fWin.value=''; fBlocker.value=''; fAsk.value=''; fLoggedby.value='';
+    pickedMood=''; document.querySelectorAll('.mood-opt').forEach(function(x){ x.classList.remove('picked'); });
+    updateHeroCount();
+  } else {
+    fStatus.textContent = storagePersistent
+      ? 'Could not save just now. Nothing was lost from your screen, try again.'
+      : 'Not connected to the database yet. See the storage notice above.';
+    fStatus.className = 'status-msg err';
+  }
+});
+
+/* ---------------- wins wall ---------------- */
+var wCommunity = document.getElementById('w-community');
+var wAll = document.createElement('option'); wAll.value='all'; wAll.textContent='All communities'; wCommunity.appendChild(wAll);
+COMMUNITIES.forEach(function(c){ var o=document.createElement('option'); o.value=c; o.textContent=SHORT[c]; wCommunity.appendChild(o); });
+wCommunity.addEventListener('change', renderWins);
+
+function renderWins(){
+  var filt = wCommunity.value;
+  var wins = entries.filter(function(e){ return e.win && (filt==='all' || e.community===filt); })
+    .sort(function(a,b){ return b.enteredAt.localeCompare(a.enteredAt); });
+  document.getElementById('wins-empty').style.display = wins.length===0 ? 'block' : 'none';
+  document.getElementById('wins-host').innerHTML = wins.map(function(e){
+    var tag = e.recId ? (e.recId+' \u00b7 '+(REC_TITLES[e.recId]||'')) : 'General';
+    return '<div class="win-card"><div class="wtext">'+esc(e.win)+'</div>'
+      +'<div class="wmeta">'+SHORT[e.community]+' &middot; '+fmtWhen(e.enteredAt)+' &middot; '+esc(tag)+(e.loggedBy?' &middot; '+esc(e.loggedBy):'')+'</div></div>';
+  }).join('');
+}
+
+/* ---------------- ask list ---------------- */
+var aCommunity = document.getElementById('a-community'), aStatus = document.getElementById('a-status');
+var aAll = document.createElement('option'); aAll.value='all'; aAll.textContent='All communities'; aCommunity.appendChild(aAll);
+COMMUNITIES.forEach(function(c){ var o=document.createElement('option'); o.value=c; o.textContent=SHORT[c]; aCommunity.appendChild(o); });
+aCommunity.addEventListener('change', renderAsks);
+aStatus.addEventListener('change', renderAsks);
+
+async function toggleResolved(id){
+  var e = entries.find(function(x){ return x.id===id; });
+  if(!e) return;
+  var prev = e.resolved;
+  e.resolved = !e.resolved;
+  var ok = await updateResolved(id, e.resolved);
+  if(!ok){ e.resolved = prev; alert('Could not update just now.'); }
+  renderAsks(); renderMomentum(); updateHeroCount();
+}
+window.__toggleResolved = toggleResolved;
+
+function renderAsks(){
+  var commF = aCommunity.value, statF = aStatus.value;
+  var asks = entries.filter(function(e){ return e.ask; });
+  if(commF!=='all') asks = asks.filter(function(e){ return e.community===commF; });
+  if(statF==='open') asks = asks.filter(function(e){ return !e.resolved; });
+  if(statF==='resolved') asks = asks.filter(function(e){ return e.resolved; });
+  asks.sort(function(a,b){ return b.enteredAt.localeCompare(a.enteredAt); });
+
+  document.getElementById('asks-empty').style.display = asks.length===0 ? 'block' : 'none';
+  document.getElementById('asks-host').innerHTML = asks.map(function(e){
+    var tag = e.recId ? (e.recId) : 'General';
+    return '<div class="ask-row'+(e.resolved?' resolved':'')+'">'
+      +'<div class="atext">'+esc(e.ask)
+        +'<div class="ameta">'+SHORT[e.community]+' &middot; '+fmtWhen(e.enteredAt)+' &middot; <span class="ask-tag">'+esc(tag)+'</span>'+(e.loggedBy?' &middot; '+esc(e.loggedBy):'')+'</div>'
+      +'</div>'
+      +'<button class="ask-toggle'+(e.resolved?' done':'')+'" onclick="window.__toggleResolved(\''+e.id+'\')">'+(e.resolved?'Resolved':'Mark resolved')+'</button>'
+      +'</div>';
+  }).join('');
+}
+
+/* ---------------- momentum overview ---------------- */
+function renderMomentum(){
+  // streaks
+  var streakHost = document.getElementById('streak-host');
+  streakHost.innerHTML = COMMUNITIES.filter(function(c){ return c!=='Portfolio-wide'; }).map(function(c){
+    var weeks = entries.filter(function(e){ return e.community===c; }).map(function(e){ return weekVal(e.week); }).filter(function(v){ return v!=null; });
+    var uniq = Array.from(new Set(weeks)).sort(function(a,b){ return b-a; });
+    var streak = 0;
+    if(uniq.length){ streak=1; for(var i=1;i<uniq.length;i++){ if(uniq[i-1]-uniq[i]===1) streak++; else break; } }
+    var lastMoodEntry = entries.filter(function(e){ return e.community===c && e.mood; }).sort(function(a,b){ return b.enteredAt.localeCompare(a.enteredAt); })[0];
+    var moodLabel = lastMoodEntry ? (MOODS.find(function(m){ return m.v===lastMoodEntry.mood; })||{}).label : null;
+    return '<div class="streak-row"><span>'+SHORT[c]+'</span><span style="display:flex;gap:8px;align-items:center">'
+      + (moodLabel ? '<span class="mood-pill">'+moodLabel+'</span>' : '')
+      + (streak>0 ? '<span class="streak-badge">'+streak+'-week streak</span>' : '<span class="mood-pill">No check-ins yet</span>')
+      + '</span></div>';
+  }).join('');
+
+  // by protocol
+  var momHost = document.getElementById('mom-host');
+  momHost.innerHTML = Object.keys(REC_TITLES).map(function(id){
+    var rel = entries.filter(function(e){ return e.recId===id; });
+    var wins = rel.filter(function(e){ return e.win; }).length;
+    var openAsks = rel.filter(function(e){ return e.ask && !e.resolved; }).length;
+    var last = rel.sort(function(a,b){ return b.enteredAt.localeCompare(a.enteredAt); })[0];
+    return '<div class="mom-card"><div class="mom-top"><h4>'+REC_TITLES[id]+'</h4><span class="idb">'+id+'</span></div>'
+      +'<div class="mom-stats"><span><b>'+wins+'</b> win'+(wins===1?'':'s')+' logged</span>'
+      +'<span><b>'+openAsks+'</b> open ask'+(openAsks===1?'':'s')+'</span>'
+      +'<span>'+(last?('last check-in '+fmtWhen(last.enteredAt)):'no check-ins yet')+'</span></div></div>';
+  }).join('');
+}
+
+/* ---------------- boot ---------------- */
+function updateHeroCount(){
+  var wins = entries.filter(function(e){ return e.win; }).length;
+  var openAsks = entries.filter(function(e){ return e.ask && !e.resolved; }).length;
+  document.getElementById('hero-count').innerHTML = '<b>'+entries.length+'</b> check-ins<br><b>'+wins+'</b> wins &middot; <b>'+openAsks+'</b> open asks';
+}
+(async function boot(){
+  await checkStorage();
+  renderStorageBanner();
+  await loadEntries();
+  updateHeroCount();
+  renderWins(); renderAsks(); renderMomentum();
+})();
+
+})();
+</script>
+</body>
+</html>
