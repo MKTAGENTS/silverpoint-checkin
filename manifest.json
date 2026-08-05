@@ -1,0 +1,14 @@
+{
+  "name": "Silverpoint Team Check-In",
+  "short_name": "SP Check-In",
+  "description": "Weekly team check-in and momentum board for the Silverpoint corrective action protocols.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#E7EAE4",
+  "theme_color": "#1B2A24",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}
